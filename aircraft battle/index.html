@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title></title>
+	</head>
+	<link rel="stylesheet" type="text/css" href="css/dahuiji.css"/>
+	<body>
+		<div class="main" id="main">
+			<ul class="options" id="options">
+				<li level="1">非常简单</li>
+				<li level="2">比较简单</li>
+				<li level="3">比较困难</li>
+				<li level="4">变态级别</li>
+			</ul>
+		</div>
+	</body>
+</html>
+<script src = "public.js"></script>
+<script type="text/javascript">
+	//游戏开始
+	//飞机创建 飞机移动
+	//子弹创建  子弹移动
+	//敌机创建
+	window.onload = function(){
+		new GameEngine().start();
+	}
+	function GameEngine(){
+		if( !GameEngine.instance ){
+			GameEngine.instance = {
+				level : 0,
+				enemes: new Set(),
+				main : $("main"),
+				start : function(){
+					this.initMenu();
+				},
+				initMenu : function(){
+					this.dianji =  $("options");
+					this.dianji.onclick = function(e){
+						var e = e || event;
+						var target = e.target || e.srcElement;
+						if(target.tagName == "LI"){
+							this.level = target.getAttribute("level");
+							this.dianji.remove();
+							this.startgame();//游戏开始 logoing入场
+						}
+					}.bind(this)
+				},
+				startgame : function(){
+					this.logo = document.createElement("div");
+					this.logo.className = "logo";
+					this.main.appendChild(this.logo);
+					this.logoing = document.createElement("div");
+					this.logoing.className = "loading";
+					this.main.appendChild(this.logoing);
+					var index = 1;
+					var timer = setInterval(function(){
+						this.logoing.style.backgroundImage= "url(images/loading"+(++index)+".png)";
+						if(index == 3){
+							index = 0;
+						}
+					}.bind(this),500)
+					var count = 0 ;
+					setInterval(function(){
+						this.main.style.backgroundPositionY = ++count + "px";
+					}.bind(this),30)
+					setTimeout(function(){
+						this.logo.remove();
+						this.logoing.remove();
+						this.plane();//飞机入场
+					}.bind(this),3000)
+				},
+				plane : function(){
+					new Myplane().show();//飞机显示
+					this.autoCreateEnemy();//敌机的创建   
+				},
+				autoCreateEnemy : function(){//敌机的创建
+					setInterval(function(){
+						if( Math.random() > 0.3 ){
+							//new Enemy("small").init().move();
+							//注意 ： 集合中存放每一个敌机对象  保证move方法  返回一个对象  将这个对象存入到集合中
+							this.enemes.add( new Enemy("small").init().move() );
+						}
+					}.bind(this),1000)
+					
+					setInterval(function(){
+						if( Math.random() > 0.5 ){
+							//new Enemy("middle").init().move();
+							this.enemes.add( new Enemy("middle").init().move() );
+						}
+					}.bind(this),3000)
+					
+					setInterval(function(){
+						if( Math.random() > 0.8 ){
+							//new Enemy("large").init().move();
+							this.enemes.add( new Enemy("large").init().move() );
+						}
+					}.bind(this),5000)
+				},
+				width : function(){
+					return this.main.offsetWidth;
+				},
+				height : function(){
+					return this.main.offsetHeight;
+				},
+				left : function(){
+					return this.main.offsetLeft;
+				},
+				append : function(obj){
+					this.main.appendChild(obj.body);
+				}
+			}
+		}
+		return GameEngine.instance;
+	}
+	function Myplane(){
+		if( !Myplane.instance ){
+			Myplane.instance = {
+				show : function(){
+					this.init();//飞机创建;
+					this.move()//飞机移动;
+					this.fire();//飞机开火
+				},
+				init : function(){
+					this.myplane = document.createElement("div");
+					new GameEngine().main.appendChild(this.myplane);
+					this.myplane.className = "my-warplain";
+					//飞机初始位置
+					var oleft = (new GameEngine().width() - this.width())/2;
+					this.left(oleft);
+					this.bottom(0);
+				},
+				move : function(){
+					new GameEngine().main.onmousemove=function(e){
+						var e = e || event;
+						var oleft = e.pageX - new GameEngine().left() - this.width()/2;
+						oleft = Math.min( new GameEngine().width()-this.width() , Math.max(0 , oleft) );
+						this.left(oleft);
+						var otop = e.pageY - this.height()/2;
+						this.top(otop);
+						
+						var enemes = new GameEngine().enemes;
+						for( var en of enemes){
+							if( pz(this.myplane,en.body) ){
+								this.explode();
+							}
+						}
+					}.bind(this)
+				},
+				explode : function(){//飞机爆炸
+					this.myplane.className = "my-warplain_die";
+					setTimeout(function(){
+						this.myplane.style.background = "url(images/me_die2.png)";
+						setTimeout(function(){
+							this.myplane.style.background = "url(images/me_die3.png)";
+							setTimeout(function(){
+								this.myplane.style.background = "url(images/me_die4.png)";
+								this.myplane.remove();
+							}.bind(this),50)
+						}.bind(this),50)
+					}.bind(this),50)
+					if( confirm("请问你是否继续游戏") ){
+						location.reload();
+					}else{
+						new GameEngine().main.remove();
+						this.txt = document.createTextNode("游戏结束")
+						document.body.appendChild(this.txt);
+					}
+				},
+				fire : function(){
+					setInterval(function(){
+						new Bullet().init().move();
+					},new GameEngine().level*200)
+				},
+				width : function(){
+					return this.myplane.offsetWidth;
+				},
+				height : function(){
+					return this.myplane.offsetHeight;
+				},
+				left : function(val){
+					if(val || val==0){
+						this.myplane.style.left = val + "px";
+					}
+					return this.myplane.offsetLeft;
+				},
+				bottom : function(val){
+					if(val || val == 0){
+						this.myplane.style.bottom = val + "px";
+					}
+				},
+				top : function(val){
+					if(val || val==0){
+						this.myplane.style.top = val + "px";
+					}
+					return this.myplane.offsetTop;
+				}
+			}
+		}
+		return Myplane.instance;
+	}
+	function Bullet(){
+		this.init = function(){
+			//创建子弹
+			this.body = document.createElement("div");
+			this.body.className = "bullet";
+			new GameEngine().append(this);
+			//子弹的初始位置:
+			this.left(new Myplane().left() + new Myplane().width()/2 - this.width()/2);
+			this.top(new Myplane().top());
+			return this;
+		}
+		this.move = function(){
+			this.timer = setInterval(function(){
+				var _top = this.top() - 5;
+				this.top( _top );
+				if( _top < 0 ){
+					clearInterval( this.timer );
+					this.destroy();
+					return ; //如果子弹运动到引擎顶部   不需要在实现碰撞检测
+				}
+				//子弹移动时  以一个子弹为准 检测所有的敌机     
+				var enemes = new GameEngine().enemes;
+//				console.log(enemes);
+				for( var en of enemes ){
+					if( pz( this.body, en.body ) ){
+						//子弹和敌机碰撞上   子弹爆炸消失    敌机受伤
+						this.explode();//子弹爆炸
+						en.hurt(); //敌机受伤
+						clearInterval(this.timer);
+					}
+				}
+			}.bind(this),30)
+		}
+		this.destroy = function(){
+			this.body.remove();
+		}
+		this.explode = function(){
+			this.body.className = "bullet_die";
+			setTimeout(function(){
+				this.body.style.background = "url(images/die2.png)";
+				setTimeout(function(){
+					this.body.remove();
+				}.bind(this),100)
+			}.bind(this),100)
+		}
+		this.left = function(val){
+			if(val || val == 0){
+				this.body.style.left = val + "px";
+			}
+			return this.body.offsetLeft;
+		}
+		this.top = function(val){
+			if(val || val == 0){
+				this.body.style.top = val + "px";
+			}
+			return this.body.offsetTop;
+		}
+		this.width = function(){
+			return this.body.offsetWidth;
+		}
+		this.height = function(){
+			return this.body.offsetHeight;
+		}
+	}
+	function Enemy(type){
+		this.init = function(){
+			this.body = document.createElement("div");
+			switch(type){
+				case "small" : {
+					this.body.className = "enemy-small";
+					this.hp = 1;
+					new GameEngine().append(this);
+					this.speed = 6;
+					this.left( getRand(0,new GameEngine().width() - this.width() ) );
+					this.top( -this.height() );
+					this.dieimgs = ["plain1_die1.png","plain1_die2.png","plain1_die3.png"];//存放爆炸后的敌机图片
+					break;
+				}
+				case "middle" : {
+					this.body.className = "enemy-middle";
+					this.hp = 3;
+					new GameEngine().append(this);
+					this.speed = 5;
+					this.left( getRand(0,new GameEngine().width() - this.width() ) );
+					this.top( -this.height() );
+					this.dieimgs = ["plain2_die1.png","plain2_die2.png","plain2_die3.png","plain2_die4.png"];
+					break;
+				}
+				case "large" : {
+					this.body.className = "enemy-large";
+					this.hp = 6;
+					new GameEngine().append(this);
+					this.speed = 1;
+					this.left( getRand(0,new GameEngine().width() - this.width() ) );
+					this.top( -this.height() );
+					this.dieimgs = ["plain3_die1.png","plain3_die2.png","plain3_die3.png","plain3_die4.png","plain3_die5.png","plain3_die6.png"];
+					break;
+				}
+			}
+			return this;
+		}
+		this.move = function(){
+			this.timer = setInterval(function(){
+				this.top(this.top() + this.speed );
+				if(this.top > new GameEngine().main.height ){
+					clearInterval(this.timer);
+					this.body.remove;
+				}
+			}.bind(this),30)
+			return this;//返回的对象 存入到集合中
+		}
+		this.hurt = function(){
+			--this.hp == 0 ?  this.explode() : "";
+		}
+		this.explode = function(){
+			clearInterval(this.timer);
+			//敌机中弹销毁后   不能再次中弹    将集合中对应的中弹的敌机删掉 
+			new GameEngine().enemes.delete(this);
+			var timer = setInterval(function(){
+				if(this.dieimgs.length == 0){
+					clearInterval(timer);
+					this.body.remove();
+				}
+				this.body.style.background = "url(images/"+this.dieimgs.shift()+")";
+			}.bind(this),100)
+		}
+		this.width = function(){
+			return this.body.offsetWidth;
+		}
+		this.left = function(val){
+			return this.body.style.left = val + "px";
+		}
+		this.top = function(val){
+		if( val || val == 0 ){
+				this.body.style.top = val + "px";
+			}
+			return this.body.offsetTop;
+		}
+		this.height = function(){
+			return this.body.offsetHeight;
+		}
+	}
+</script>
+ 
