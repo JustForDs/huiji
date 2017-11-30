@@ -61,7 +61,7 @@ function $(id){
 //判断鼠标操作的是 左键？滚轮？右键？
 function getButton(evt){
      var e = evt || event;
-     if( evt ){    // 高版本浏览器
+     if( evt ){    
          return e.button;
      }else if( window.event ){ //  ie
          switch( e.button ){
